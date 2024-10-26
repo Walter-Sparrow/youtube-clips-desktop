@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { useWorkDir } from "@/api/work-dir.api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { PickClipsDir } from "../../wailsjs/go/main/App";
+import { PickClipsDir, ReadUrlFromClipboard } from "../../wailsjs/go/main/App";
 
 export const Route = createLazyFileRoute("/")({
   component: Index,
@@ -16,7 +16,7 @@ export const Route = createLazyFileRoute("/")({
 function Index() {
   const [url, setUrl] = useState("");
   const navigate = useNavigate();
-  const { data: clipsDir, refetch } = useWorkDir();
+  const { data: clipsDir, isLoading, refetch } = useWorkDir();
 
   const handleLoadVideo = () => {
     if (!url || !URL.canParse(url)) {
@@ -45,9 +45,15 @@ function Index() {
     });
   };
 
+  const handleReadUrlFromClipboard = () => {
+    ReadUrlFromClipboard().then((url) => {
+      setUrl(url);
+    });
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-10 relative">
-      {!clipsDir && (
+      {!clipsDir && !isLoading && (
         <div className="absolute top-0 left-0 w-full flex items-center justify-center p-4">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -76,6 +82,7 @@ function Index() {
               className="text-xl rotate-[-10deg] -translate-y-5"
               size="icon"
               variant="outline"
+              onClick={handleReadUrlFromClipboard}
             >
               ⌘
             </Button>
@@ -83,6 +90,7 @@ function Index() {
               className="text-xl rotate-[10deg] -translate-x-4"
               size="icon"
               variant="outline"
+              onClick={handleReadUrlFromClipboard}
             >
               V
             </Button>

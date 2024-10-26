@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/sqweek/dialog"
+	"golang.design/x/clipboard"
 )
 
 type AppSettings struct {
@@ -28,6 +29,11 @@ func NewApp() *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+
+	err := clipboard.Init()
+	if err != nil {
+		log.Fatalf("Failed to init clipboard: %s", err)
+	}
 
 	configDir, err := os.UserConfigDir()
 	if err != nil {
@@ -117,4 +123,8 @@ func (a *App) PickClipsDir() {
 	}
 	a.settings.ClipsDir = directory
 	a.SaveSettings()
+}
+
+func (a *App) ReadUrlFromClipboard() string {
+	return string(clipboard.Read(clipboard.FmtText))
 }
