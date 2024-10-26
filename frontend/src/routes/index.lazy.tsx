@@ -4,6 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useWorkDir } from "@/api/work-dir.api";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+import { PickClipsDir } from "../../wailsjs/go/main/App";
 
 export const Route = createLazyFileRoute("/")({
   component: Index,
@@ -12,6 +16,7 @@ export const Route = createLazyFileRoute("/")({
 function Index() {
   const [url, setUrl] = useState("");
   const navigate = useNavigate();
+  const { data: clipsDir, refetch } = useWorkDir();
 
   const handleLoadVideo = () => {
     if (!url || !URL.canParse(url)) {
@@ -34,8 +39,28 @@ function Index() {
     });
   };
 
+  const handlePickClipsDir = () => {
+    PickClipsDir().then(() => {
+      refetch();
+    });
+  };
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-10">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-10 relative">
+      {!clipsDir && (
+        <div className="absolute top-0 left-0 w-full flex items-center justify-center p-4">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Warning</AlertTitle>
+            <AlertDescription>
+              Clips directory is not set.
+              <Button variant="link" onClick={handlePickClipsDir}>
+                Set clips directory
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
       <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-neutral-500">
         YouTube Clips
       </h1>
@@ -69,7 +94,9 @@ function Index() {
             onChange={(e) => setUrl(e.target.value)}
           />
         </div>
-        <Button onClick={handleLoadVideo}>Load video</Button>
+        <Button disabled={!clipsDir} onClick={handleLoadVideo}>
+          Load video
+        </Button>
       </div>
     </div>
   );

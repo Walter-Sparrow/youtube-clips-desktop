@@ -5,6 +5,11 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react(), TanStackRouterVite()],
+  build: {
+    rollupOptions: {
+      external: ["wailsjs/go/main/App"],
+    }
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

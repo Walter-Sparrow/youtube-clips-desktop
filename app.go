@@ -2,44 +2,73 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
+
+	"github.com/sqweek/dialog"
 )
 
-// App struct
+type AppSettings struct {
+	ClipsDir string `json:"clipsDir"`
+}
 type App struct {
-	ctx context.Context
+	ctx      context.Context
+	appDir   string
+	settings AppSettings
 }
 
-// NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{}
 }
 
-// startup is called at application startup
 func (a *App) startup(ctx context.Context) {
-	// Perform your setup here
 	a.ctx = ctx
+
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		log.Fatalf("Failed to get user config directory: %s", err)
+	}
+
+	a.appDir = filepath.Join(configDir, "youtube-clips")
+	if _, err := os.Stat(a.appDir); os.IsNotExist(err) {
+		os.MkdirAll(a.appDir, 0755)
+	}
+
+	configFilePath := filepath.Join(a.appDir, "config.json")
+	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
+		os.WriteFile(configFilePath, []byte("{}"), 0644)
+	} else {
+		content, err := os.ReadFile(configFilePath)
+		if err != nil {
+			log.Fatalf("Failed to read config file: %s", err)
+		}
+		json.Unmarshal(content, &a.settings)
+	}
 }
 
-// domReady is called after front-end resources have been loaded
+func (a *App) SaveSettings() {
+	configFilePath := filepath.Join(a.appDir, "config.json")
+	content, err := json.Marshal(a.settings)
+	if err != nil {
+		log.Fatalf("Failed to marshal settings: %s", err)
+	}
+	os.WriteFile(configFilePath, content, 0644)
+}
+
 func (a App) domReady(ctx context.Context) {
 	// Add your action here
 }
 
-// beforeClose is called when the application is about to quit,
-// either by clicking the window close button or calling runtime.Quit.
-// Returning true will cause the application to continue, false will continue shutdown as normal.
 func (a *App) beforeClose(ctx context.Context) (prevent bool) {
 	return false
 }
 
-// shutdown is called at application termination
 func (a *App) shutdown(ctx context.Context) {
-	// Perform your teardown here
 }
 
 type CreateClipRequest struct {
@@ -55,14 +84,13 @@ func (a *App) CreateClip(req CreateClipRequest) string {
 	youtubeDl := exec.Command("yt-dlp",
 		"-vU",
 		"-4",
-		"--impersonate", "chrome",
 		"-f", "bv[height<=720]+ba/b[height<=720]",
 		"--force-keyframes-at-cuts",
 		"--force-overwrites",
 		"--download-sections", fmt.Sprintf("*%s-%s", req.Start, req.End),
 		"--throttled-rate", "100K",
 		"--remux-video", "mp4",
-		"-o", "C:/Users/hdhdu/Downloads/clips/%(title)s.%(ext)s",
+		"-o", filepath.Join(a.settings.ClipsDir, "%(title)s.%(ext)s"),
 		youtubeUrl+req.VideoId,
 	)
 	youtubeDl.Stdout = os.Stdout
@@ -75,4 +103,18 @@ func (a *App) CreateClip(req CreateClipRequest) string {
 
 	log.Printf("Success in %s", time.Since(startMeasure))
 	return fmt.Sprintf("Success in %s", time.Since(startMeasure))
+}
+
+func (a *App) GetClipsDir() string {
+	return a.settings.ClipsDir
+}
+
+func (a *App) PickClipsDir() {
+	directory, err := dialog.Directory().Title("Select clips directory").Browse()
+	if err != nil {
+		log.Printf("Failed to pick clips directory: %s", err)
+		return
+	}
+	a.settings.ClipsDir = directory
+	a.SaveSettings()
 }
